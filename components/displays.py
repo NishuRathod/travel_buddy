@@ -2,6 +2,7 @@ import streamlit as st
 import folium
 from streamlit_folium import folium_static
 import requests
+from utils.place_images import get_place_image
 
 def display_weather(weather_data):
     """
@@ -46,14 +47,44 @@ def display_itinerary(itinerary):
                 schedule = days[i+1].strip()
                 st.markdown(schedule)
 
+def display_place_card(place, city, category_emoji=""):
+    """
+    Display a place card with image and details
+    """
+    image_url = get_place_image(place['name'], city)
+
+    card_html = f"""
+    <div style="
+        padding: 1.5rem;
+        border-radius: 0.5rem;
+        border: 1px solid #ddd;
+        margin-bottom: 1rem;
+        background-color: white;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    ">
+        <h3 style="color: #1E88E5; margin-bottom: 0.5rem;">{category_emoji} {place['name']}</h3>
+    """
+
+    if image_url:
+        card_html += f'<img src="{image_url}" style="width: 100%; height: 200px; object-fit: cover; border-radius: 0.5rem; margin: 0.5rem 0;">'
+
+    card_html += f"""
+        <p>{'⭐' * round(place.get('rating', 0))}</p>
+        <p style="color: #666;"><small>{place.get('vicinity', 'Address not available')}</small></p>
+    </div>
+    """
+
+    st.markdown(card_html, unsafe_allow_html=True)
+
 def display_places(places_data):
     """
     Display recommended places with an interactive map
     """
-    st.subheader("📍 Recommended Places")
+    city = places_data['tourist_attraction'][0]['vicinity'].split(',')[-1].strip()
 
-    # Create map
+    # Display map
     if places_data['tourist_attraction']:
+        st.subheader("📍 Interactive Map")
         first_place = places_data['tourist_attraction'][0]
         m = folium.Map(
             location=[
@@ -75,52 +106,29 @@ def display_places(places_data):
                     tooltip=f"{category}: {place['name']}"
                 ).add_to(m)
 
-        # Display map
         folium_static(m)
 
-    # Display hotels first with prominent styling
-    st.markdown("### 🏨 Available Hotels")
+    # Must Visit Places
+    st.markdown("### 🏛️ Must-Visit Places")
     st.markdown("<hr>", unsafe_allow_html=True)
-    for hotel in places_data['hotel']:
-        st.markdown(f"""
-        <div style="
-            padding: 1.5rem;
-            border-radius: 0.5rem;
-            border: 2px solid #1E88E5;
-            margin-bottom: 1rem;
-            background-color: #f8f9fa;
-        ">
-            <h3 style="color: #1E88E5; margin-bottom: 0.5rem;">{hotel['name']}</h3>
-            <p>{'⭐' * round(hotel.get('rating', 0))}</p>
-            <p style="color: #666;"><small>{hotel.get('vicinity', 'Address not available')}</small></p>
-        </div>
-        """, unsafe_allow_html=True)
+    for place in places_data['tourist_attraction']:
+        display_place_card(place, city, "🏛️")
 
-    # Display other places by category
-    other_categories = {
-        'tourist_attraction': '🏛️ Places to Visit',
-        'restaurant': '🍽️ Where to Eat'
-    }
+    # Hotels
+    st.markdown("### 🏨 Recommended Hotels")
+    st.markdown("<hr>", unsafe_allow_html=True)
+    hotel_cols = st.columns(2)
+    for idx, hotel in enumerate(places_data['hotel']):
+        with hotel_cols[idx % 2]:
+            display_place_card(hotel, city, "🏨")
 
-    for category, title in other_categories.items():
-        st.markdown(f"### {title}")
-        st.markdown("<hr>", unsafe_allow_html=True)
-        cols = st.columns(3)
-        for idx, place in enumerate(places_data[category]):
-            with cols[idx % 3]:
-                st.markdown(f"""
-                <div style="
-                    padding: 1rem;
-                    border-radius: 0.5rem;
-                    border: 1px solid #ddd;
-                    margin-bottom: 1rem;
-                    background-color: white;
-                ">
-                    <h4 style="margin-bottom: 0.5rem;">{place['name']}</h4>
-                    <p>{'⭐' * round(place.get('rating', 0))}</p>
-                    <p style="color: #666;"><small>{place.get('vicinity', 'Address not available')}</small></p>
-                </div>
-                """, unsafe_allow_html=True)
+    # Restaurants
+    st.markdown("### 🍽️ Popular Restaurants")
+    st.markdown("<hr>", unsafe_allow_html=True)
+    restaurant_cols = st.columns(2)
+    for idx, restaurant in enumerate(places_data['restaurant']):
+        with restaurant_cols[idx % 2]:
+            display_place_card(restaurant, city, "🍽️")
 
 def display_loading():
     """
