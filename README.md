@@ -1,6 +1,12 @@
-# AI Travel Planner
+pip install streamlit streamlit-folium folium python-dotenv requests trafilatura
+   streamlit run main.py
+   ```
 
-An AI-powered travel planning application that generates personalized itineraries with dynamic recommendations and interactive exploration tools.
+3. **Free APIs:**
+   This project uses several free APIs - see [FREE_API_GUIDE.md](FREE_API_GUIDE.md) for details on:
+   - Which APIs are completely free
+   - Which APIs are optional
+   - How to use the app without API keys
 
 ## Project Structure
 ```
@@ -18,19 +24,13 @@ An AI-powered travel planning application that generates personalized itinerarie
 └── main.py              # Main application file
 ```
 
-## Dependencies
-Install the following Python packages:
-```bash
-pip install streamlit streamlit-folium folium openai python-dotenv requests trafilatura
-```
-
-## Environment Variables
-Create a `.env` file in the root directory with the following:
-```
-OPENWEATHER_API_KEY=your_openweather_api_key
-OPENAI_API_KEY=your_openai_api_key
-GOOGLE_PLACES_API_KEY=your_google_places_api_key
-```
+## Features
+- Interactive travel planning interface
+- AI-generated personalized itineraries
+- Weather information integration
+- Interactive maps with points of interest
+- Hotel and restaurant recommendations
+- Dynamic place information with images
 
 ## Setup Instructions
 
@@ -44,33 +44,7 @@ GOOGLE_PLACES_API_KEY=your_google_places_api_key
    ```bash
    pip install -r requirements.txt
    ```
-4. Set up your `.env` file with the required API keys
+4. Set up your `.env` file with the required API keys (optional)
 5. Start the application:
    ```bash
    streamlit run main.py
-   ```
-
-## Features
-- Interactive travel planning interface
-- AI-generated personalized itineraries
-- Weather information integration
-- Interactive maps with points of interest
-- Hotel and restaurant recommendations
-- Dynamic place information with images
-
-## Development in VS Code
-1. Install the Python extension for VS Code
-2. Open the project folder in VS Code
-3. Select your Python interpreter (preferably from your virtual environment)
-4. Install the Streamlit extension for better development experience
-5. Use the integrated terminal to run the application
-
-## Troubleshooting
-- If you encounter API timeout issues, the application will use fallback data
-- Ensure all API keys are correctly set in your `.env` file
-- Check your internet connection for map and weather data
-
-## Notes
-- The application uses OpenStreetMap for place data (no API key required)
-- Weather data is fetched from OpenWeather API
-- Place images are fetched from Wikipedia API
