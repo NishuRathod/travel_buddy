@@ -5,29 +5,60 @@ from datetime import datetime, timedelta
 @st.cache_data(ttl=3600)
 def get_weather_data(city, api_key=None):
     """
-    Fetch weather data from WeatherAPI.com (free tier)
+    Fetch weather data from Open-Meteo API (completely free, no authentication needed)
     """
     try:
-        # Using WeatherAPI.com free tier
-        base_url = "http://api.weatherapi.com/v1/forecast.json"
-        params = {
-            "q": city,
-            "days": 5,
-            "key": "7f6b9a1a8c024f7485374055232502"  # Free API key with limited requests
-        }
-        response = requests.get(base_url, params=params)
-        response.raise_for_status()
+        # First get coordinates for the city using Nominatim (OpenStreetMap)
+        geocoding_url = f"https://nominatim.openstreetmap.org/search?city={city}&format=json"
+        headers = {'User-Agent': 'TravelPlanner/1.0'}
+        geo_response = requests.get(geocoding_url, headers=headers)
+        geo_response.raise_for_status()
 
-        # Transform response to match our format
-        data = response.json()
+        if not geo_response.json():
+            raise Exception("City not found")
+
+        location = geo_response.json()[0]
+        lat, lon = float(location['lat']), float(location['lon'])
+
+        # Get weather data from Open-Meteo
+        weather_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&daily=temperature_2m_max,weathercode&timezone=auto"
+        weather_response = requests.get(weather_url)
+        weather_response.raise_for_status()
+        weather_data = weather_response.json()
+
+        # Convert weather codes to descriptions
+        weather_codes = {
+            0: "Clear sky",
+            1: "Mainly clear",
+            2: "Partly cloudy",
+            3: "Overcast",
+            45: "Foggy",
+            51: "Light drizzle",
+            53: "Moderate drizzle",
+            61: "Light rain",
+            63: "Moderate rain",
+            65: "Heavy rain",
+            71: "Light snow",
+            73: "Moderate snow",
+            75: "Heavy snow",
+            95: "Thunderstorm"
+        }
+
+        # Transform to match our expected format
         return {
             'list': [
                 {
-                    'dt_txt': day['date'],
-                    'main': {'temp': day['day']['avgtemp_c']},
-                    'weather': [{'description': day['day']['condition']['text']}]
+                    'dt_txt': date,
+                    'main': {'temp': temp},
+                    'weather': [{
+                        'description': weather_codes.get(code, "Unknown")
+                    }]
                 }
-                for day in data['forecast']['forecastday']
+                for date, temp, code in zip(
+                    weather_data['daily']['time'],
+                    weather_data['daily']['temperature_2m_max'],
+                    weather_data['daily']['weathercode']
+                )
             ]
         }
     except requests.exceptions.RequestException as e:
@@ -70,7 +101,7 @@ def get_places_data(city, budget, api_key=None):
             # Transform to match our format
             all_places[category_key] = [
                 {
-                    'name': place['name'],
+                    'name': place['name'] or "Unnamed Location",
                     'rating': float(place.get('rate', 0)) * 2,  # Convert to 5-star scale
                     'vicinity': f"{place.get('kinds', '').replace(',', ', ')}",
                     'geometry': {
