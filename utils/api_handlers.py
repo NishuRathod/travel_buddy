@@ -1,118 +1,108 @@
 import requests
 import streamlit as st
 from datetime import datetime, timedelta
+import time
 
 @st.cache_data(ttl=3600)
 def get_weather_data(city, api_key=None):
     """
-    Fetch weather data from Open-Meteo API (completely free, no authentication needed)
+    Fetch weather data from OpenWeather API with caching
     """
     try:
-        # First get coordinates for the city using Nominatim (OpenStreetMap)
-        geocoding_url = f"https://nominatim.openstreetmap.org/search?city={city}&format=json"
-        headers = {'User-Agent': 'TravelPlanner/1.0'}
-        geo_response = requests.get(geocoding_url, headers=headers)
-        geo_response.raise_for_status()
+        if not api_key:
+            raise Exception("OpenWeather API key is required")
 
-        if not geo_response.json():
-            raise Exception("City not found")
-
-        location = geo_response.json()[0]
-        lat, lon = float(location['lat']), float(location['lon'])
-
-        # Get weather data from Open-Meteo
-        weather_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&daily=temperature_2m_max,weathercode&timezone=auto"
-        weather_response = requests.get(weather_url)
-        weather_response.raise_for_status()
-        weather_data = weather_response.json()
-
-        # Convert weather codes to descriptions
-        weather_codes = {
-            0: "Clear sky",
-            1: "Mainly clear",
-            2: "Partly cloudy",
-            3: "Overcast",
-            45: "Foggy",
-            51: "Light drizzle",
-            53: "Moderate drizzle",
-            61: "Light rain",
-            63: "Moderate rain",
-            65: "Heavy rain",
-            71: "Light snow",
-            73: "Moderate snow",
-            75: "Heavy snow",
-            95: "Thunderstorm"
+        base_url = "http://api.openweathermap.org/data/2.5/forecast"
+        params = {
+            "q": city,
+            "appid": api_key,
+            "units": "metric"
         }
-
-        # Transform to match our expected format
-        return {
-            'list': [
-                {
-                    'dt_txt': date,
-                    'main': {'temp': temp},
-                    'weather': [{
-                        'description': weather_codes.get(code, "Unknown")
-                    }]
-                }
-                for date, temp, code in zip(
-                    weather_data['daily']['time'],
-                    weather_data['daily']['temperature_2m_max'],
-                    weather_data['daily']['weathercode']
-                )
-            ]
-        }
+        response = requests.get(base_url, params=params)
+        response.raise_for_status()
+        return response.json()
     except requests.exceptions.RequestException as e:
         raise Exception(f"Weather API error: {str(e)}")
 
 @st.cache_data(ttl=3600)
 def get_places_data(city, budget, api_key=None):
     """
-    Fetch places data from OpenTripMap API (free tier)
+    Fetch places data from OpenStreetMap/Nominatim API (free, no authentication needed)
     """
     try:
-        # Using OpenTripMap API free tier
-        API_KEY = "5ae2e3f221c38a28845f05b6e387458371aa4704f3c1a817dd4c5954"  # Free API key
+        headers = {'User-Agent': 'TravelPlanner/1.0 (educational project)'}
 
-        # First, get city coordinates
-        geourl = f"https://api.opentripmap.com/0.1/en/places/geoname?name={city}&apikey={API_KEY}"
-        response = requests.get(geourl)
+        # Get city information
+        city_url = f"https://nominatim.openstreetmap.org/search?city={city}&format=json"
+        response = requests.get(city_url, headers=headers)
         response.raise_for_status()
-        location = response.json()
 
-        if not location.get('lat'):
+        if not response.json():
             raise Exception("City not found")
 
-        # Get places around the location
-        radius = 5000  # 5km radius
+        location = response.json()[0]
+        lat, lon = float(location['lat']), float(location['lon'])
+
+        # Categories to search for
         categories = {
-            'tourist_attraction': 'interesting_places',
-            'restaurant': 'restaurants',
-            'hotel': 'accomodations'
+            'tourist_attraction': 'tourism',
+            'restaurant': 'restaurant',
+            'hotel': 'hotel'
         }
 
         all_places = {}
 
-        for category_key, category_value in categories.items():
-            places_url = f"https://api.opentripmap.com/0.1/en/places/radius?radius={radius}&lon={location['lon']}&lat={location['lat']}&kinds={category_value}&format=json&apikey={API_KEY}"
-            response = requests.get(places_url)
+        for category_key, osm_tag in categories.items():
+            # Respect rate limiting
+            time.sleep(1)
+
+            # Search for places in each category
+            query = f"""
+            [out:json][timeout:10];
+            (
+              node["amenity"="{osm_tag}"](around:5000,{lat},{lon});
+              way["amenity"="{osm_tag}"](around:5000,{lat},{lon});
+              relation["amenity"="{osm_tag}"](around:5000,{lat},{lon});
+            );
+            out body center;
+            """
+
+            overpass_url = "https://overpass-api.de/api/interpreter"
+            response = requests.post(overpass_url, data={"data": query}, headers=headers)
             response.raise_for_status()
-            places = response.json()[:5]  # Get top 5 places
+
+            places = response.json().get('elements', [])[:5]  # Get top 5 places
 
             # Transform to match our format
             all_places[category_key] = [
                 {
-                    'name': place['name'] or "Unnamed Location",
-                    'rating': float(place.get('rate', 0)) * 2,  # Convert to 5-star scale
-                    'vicinity': f"{place.get('kinds', '').replace(',', ', ')}",
+                    'name': place.get('tags', {}).get('name', 'Unnamed Location'),
+                    'rating': 4.0,  # Default rating since OSM doesn't provide ratings
+                    'vicinity': f"{place.get('tags', {}).get('addr:street', '')}, {place.get('tags', {}).get('addr:city', city)}",
                     'geometry': {
                         'location': {
-                            'lat': place['point']['lat'],
-                            'lng': place['point']['lon']
+                            'lat': place.get('lat', place.get('center', {}).get('lat')),
+                            'lng': place.get('lon', place.get('center', {}).get('lon'))
                         }
                     }
                 }
-                for place in places if place.get('name')
+                for place in places
+                if place.get('tags', {}).get('name')
             ]
+
+            # If no places found, add some generic ones
+            if not all_places[category_key]:
+                all_places[category_key] = [{
+                    'name': f'Popular {category_key.replace("_", " ").title()} in {city}',
+                    'rating': 4.0,
+                    'vicinity': city,
+                    'geometry': {
+                        'location': {
+                            'lat': lat,
+                            'lng': lon
+                        }
+                    }
+                }]
 
         return all_places
 
