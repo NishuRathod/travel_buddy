@@ -1,9 +1,8 @@
-pip install streamlit streamlit-folium folium python-dotenv requests trafilatura
-   streamlit run main.py
+
    ```
 
-3. **Free APIs:**
-   This project uses several free APIs - see [FREE_API_GUIDE.md](FREE_API_GUIDE.md) for details on:
+1. **Free APIs:**
+   This project uses several free APIs - see [FREE_API_GUIDE.txt]for details on:
    - Which APIs are completely free
    - Which APIs are optional
    - How to use the app without API keys
@@ -21,7 +20,7 @@ pip install streamlit streamlit-folium folium python-dotenv requests trafilatura
 │   ├── api_handlers.py  # API integration
 │   ├── itinerary_generator.py  # AI itinerary generation
 │   └── place_images.py  # Image handling
-└── main.py              # Main application file
+└── app.py              # Main application file
 ```
 
 ## Features
@@ -42,9 +41,9 @@ pip install streamlit streamlit-folium folium python-dotenv requests trafilatura
    ```
 3. Install dependencies:
    ```bash
-   pip install -r requirements.txt
+    pip install streamlit streamlit-folium folium python-dotenv requests trafilatura
    ```
 4. Set up your `.env` file with the required API keys (optional)
 5. Start the application:
    ```bash
-   streamlit run main.py
+   streamlit run app.py
