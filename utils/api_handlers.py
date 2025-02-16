@@ -9,7 +9,7 @@ def get_weather_data(city, api_key=None):
     """
     Fetch weather data from OpenWeather API with caching
     """
-    try:
+    '''try:
         if not api_key:
             raise Exception("OpenWeather API key is required")
 
@@ -23,7 +23,7 @@ def get_weather_data(city, api_key=None):
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as e:
-        raise Exception(f"Weather API error: {str(e)}")
+        raise Exception(f"Weather API error: {str(e)}")'''
 
 def fetch_with_retry(url: str, method: str = 'get', data: Dict = None, max_retries: int = 3, delay: int = 2) -> Dict:
     """Helper function to fetch data with retries"""

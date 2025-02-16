@@ -1,6 +1,7 @@
 [server]
-headless = true
-address = "0.0.0.0"
+headless = false
+enableCORS = false
+address = "localhost"
 port = 5000
 
 [theme]
