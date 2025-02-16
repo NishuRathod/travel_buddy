@@ -1,8 +1,9 @@
 [server]
-headless = false
-enableCORS = false
 address = "localhost"
 port = 5000
+headless = true
+enableCORS = false
+enableXsrfProtection = false
 
 [theme]
 primaryColor = "#FF6B6B"
